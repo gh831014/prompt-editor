@@ -1,0 +1,5 @@
+{
+  "name": "Prompt Editor v1.0",
+  "description": "A Markdown-based prompt editor with Supabase integration, structure analysis, and AI assistance.",
+  "requestFramePermissions": []
+}
