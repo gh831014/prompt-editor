@@ -17,48 +17,55 @@ export interface ChatMessage {
 
 export class LLMService {
   /**
-   * 从数据库获取默认大模型配置
+   * 从数据库获取默认大模型配置，如果失败则使用硬编码的千问模型作为默认值
    */
   async getDefaultConfig(): Promise<LLMConfig | null> {
-    const { data, error } = await supabase
-      .from('llm_providers')
-      .select(`
-        id,
-        name,
-        base_url,
-        api_key,
-        llm_models!inner(
+    try {
+      const { data, error } = await supabase
+        .from('llm_providers')
+        .select(`
           id,
-          model_id,
-          model_name,
-          model_type
-        )
-      `)
-      .eq('is_default', true)
-      .eq('is_active', true)
-      .eq('llm_models.is_default', true)
-      .eq('llm_models.is_active', true)
-      .single();
+          name,
+          base_url,
+          api_key,
+          llm_models!inner(
+            id,
+            model_id,
+            model_name,
+            model_type
+          )
+        `)
+        .eq('is_default', true)
+        .eq('is_active', true)
+        .eq('llm_models.is_default', true)
+        .eq('llm_models.is_active', true)
+        .single();
 
-    if (error || !data) {
-      console.error('Failed to fetch LLM config:', error);
-      return null;
+      if (!error && data) {
+        const model = Array.isArray(data.llm_models) ? data.llm_models[0] : data.llm_models;
+        return {
+          provider_id: data.id,
+          provider_name: data.name,
+          base_url: data.base_url,
+          api_key: data.api_key,
+          model_id: model.model_id,
+          model_name: model.model_name,
+          model_type: model.model_type,
+        };
+      }
+    } catch (err) {
+      console.warn('Database fetch for LLM config failed, using hardcoded default:', err);
     }
 
-    // The query returns an array for llm_models because of the join, but we expect one due to logic/schema usually.
-    // However, supabase-js types might infer it as array or object depending on relationship.
-    // Assuming one-to-many provider->models, but we filter by is_default.
-    // Let's cast or handle safely.
-    const model = Array.isArray(data.llm_models) ? data.llm_models[0] : data.llm_models;
-
+    // 默认使用用户提供的千问模型参数
     return {
-      provider_id: data.id,
-      provider_name: data.name,
-      base_url: data.base_url,
-      api_key: data.api_key,
-      model_id: model.model_id,
-      model_name: model.model_name,
-      model_type: model.model_type,
+      provider_id: 'qwen-default',
+      provider_name: '千问',
+      base_url: 'https://coding.dashscope.aliyuncs.com/v1',
+      api_key: 'sk-sp-3ddae8d35c224c59a41d01079fe88f21',
+      model_id: 'qwen3.5-plus',
+      model_name: 'Qwen 3.5 Plus',
+      model_type: 'chat',
     };
   }
 
