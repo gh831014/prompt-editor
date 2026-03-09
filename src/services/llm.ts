@@ -63,7 +63,7 @@ export class LLMService {
   }
 
   /**
-   * 调用大模型 API
+   * 调用大模型 API (通过服务器代理以避免跨域问题)
    */
   async chat(messages: ChatMessage[], config?: LLMConfig): Promise<string> {
     // 如果没有提供配置，从数据库获取默认配置
@@ -74,28 +74,28 @@ export class LLMService {
     }
 
     try {
-      const response = await fetch(`${llmConfig.base_url}/chat/completions`, {
+      // 使用本地服务器代理调用，避免浏览器直接调用产生的跨域(CORS)错误
+      const response = await fetch('/api/llm/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${llmConfig.api_key}`,
         },
         body: JSON.stringify({
-          model: llmConfig.model_id,
+          baseUrl: llmConfig.base_url,
+          apiKey: llmConfig.api_key,
+          modelId: llmConfig.model_id,
           messages: messages,
-          temperature: 0.7,
-          max_tokens: 2048,
         }),
       });
 
       if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`API Error: ${response.status} - ${errorText}`);
+        const errorData = await response.json();
+        throw new Error(`API Error: ${response.status} - ${errorData.error || 'Unknown error'}`);
       }
 
       const data = await response.json();
       return data.choices[0].message.content;
-    } catch (error) {
+    } catch (error: any) {
       console.error('LLM API call failed:', error);
       throw error;
     }

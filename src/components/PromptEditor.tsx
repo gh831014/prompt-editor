@@ -287,7 +287,7 @@ export const PromptEditor: React.FC = () => {
           <StructurePanel items={structure} onItemClick={scrollToLine} />
         </div>
         <div className="flex-1 overflow-hidden flex flex-col h-1/2">
-          <AIChat currentPromptContent={content} />
+          <AIChat currentPromptContent={content} structure={structure} />
         </div>
       </div>
     </div>
